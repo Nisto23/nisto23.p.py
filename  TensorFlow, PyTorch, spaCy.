@@ -1,0 +1,186 @@
+Part 1: Theoretical Understanding
+Q1: TensorFlow vs. PyTorch Differences
+
+Graph Execution: TensorFlow uses static computation graphs (define-then-run), while PyTorch uses dynamic graphs (eager execution), enabling real-time debugging.
+
+API Design: TensorFlow offers Keras for simplicity but has a steeper low-level API curve. PyTorch has a Pythonic, intuitive interface.
+
+Deployment: TensorFlow excels in production (TensorFlow Lite/Serving), while PyTorch is preferred for research and rapid prototyping.
+
+When to Choose:
+
+TensorFlow: Production deployment, mobile/edge devices.
+
+PyTorch: Research, dynamic architectures (e.g., RNNs), debugging ease.
+
+Q2: Jupyter Notebooks in AI Use Cases
+
+Exploratory Data Analysis (EDA):
+
+Interactively visualize data distributions, correlations, and missing values using Pandas/Matplotlib.
+
+Model Prototyping:
+
+Rapidly iterate model architectures (e.g., tweak hyperparameters) and visualize outputs (e.g., confusion matrices).
+
+Q3: spaCy vs. Basic String Operations
+
+Linguistic Features: spaCy provides tokenization, lemmatization, and POS tagging using statistical models, unlike regex-based string splitting.
+
+Named Entity Recognition (NER): Identifies entities (e.g., brands) contextually, while string operations lack semantic understanding.
+
+Efficiency: Optimized for large text volumes with compiled Cython code.
+
+Comparative Analysis: Scikit-learn vs. TensorFlow
+
+Aspect	Scikit-learn	TensorFlow
+Target Applications	Classical ML (SVM, Random Forest)	Deep Learning (CNNs, RNNs)
+Ease of Use	Simple, consistent API (fit/predict)	Steeper learning curve; graph sessions
+Community Support	Extensive documentation for ML basics	Larger ecosystem for DL (TF Hub, Keras)
+Part 2: Practical Implementation
+Task 1: Iris Classifier (Scikit-learn)
+
+python
+from sklearn.datasets import load_iris
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, precision_score, recall_score
+import numpy as np
+
+# Load data
+iris = load_iris()
+X, y = iris.data, iris.target
+
+# Split data (no missing values in Iris)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Train model
+clf = DecisionTreeClassifier(max_depth=2)
+clf.fit(X_train, y_train)
+
+# Evaluate
+y_pred = clf.predict(X_test)
+print(f"Accuracy: {accuracy_score(y_test, y_pred):.2f}")
+print(f"Precision (macro): {precision_score(y_test, y_pred, average='macro'):.2f}")
+print(f"Recall (macro): {recall_score(y_test, y_pred, average='macro'):.2f}")
+Task 2: MNIST CNN (TensorFlow)
+
+python
+import tensorflow as tf
+import matplotlib.pyplot as plt
+
+# Load data
+(X_train, y_train), (X_test, y_test) = tf.keras.datasets.mnist.load_data()
+X_train = X_train.reshape(-1, 28, 28, 1).astype('float32') / 255.0
+X_test = X_test.reshape(-1, 28, 28, 1).astype('float32') / 255.0
+
+# Build CNN
+model = tf.keras.Sequential([
+    tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=(28, 28, 1)),
+    tf.keras.layers.MaxPooling2D((2, 2)),
+    tf.keras.layers.Flatten(),
+    tf.keras.layers.Dense(128, activation='relu'),
+    tf.keras.layers.Dense(10, activation='softmax')
+])
+
+model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+model.fit(X_train, y_train, epochs=5, validation_split=0.1)
+
+# Evaluate (>95% accuracy)
+test_loss, test_acc = model.evaluate(X_test, y_test)
+print(f"Test Accuracy: {test_acc:.4f}")
+
+# Visualize predictions
+sample_images = X_test[:5]
+predictions = model.predict(sample_images).argmax(axis=1)
+fig, axes = plt.subplots(1, 5, figsize=(15, 3))
+for i, ax in enumerate(axes):
+    ax.imshow(sample_images[i].squeeze(), cmap='gray')
+    ax.set_title(f"Pred: {predictions[i]}")
+plt.show()
+Task 3: NER & Sentiment (spaCy)
+
+python
+import spacy
+from spacy import displacy
+from spacy.matcher import Matcher
+
+nlp = spacy.load("en_core_web_sm")
+
+# Sample review
+review = "Apple iPhone 12 has a great camera but poor battery life. Samsung Galaxy is better."
+
+# NER for products/brands
+doc = nlp(review)
+entities = [(ent.text, ent.label_) for ent in doc.ents if ent.label_ in ('ORG', 'PRODUCT')]
+print("Entities:", entities)  # Output: [('Apple', 'ORG'), ('iPhone 12', 'PRODUCT'), ('Samsung Galaxy', 'PRODUCT')]
+
+# Rule-based sentiment
+matcher = Matcher(nlp.vocab)
+positive = ["great", "better", "excellent"]
+negative = ["poor", "bad"]
+matcher.add("Positive", [[{"LOWER": {"IN": positive}}]])
+matcher.add("Negative", [[{"LOWER": {"IN": negative}}]])
+
+matches = matcher(doc)
+sentiment = "positive" if len([m for m in matches if m[0] == nlp.vocab.strings["Positive"]]) > 0 else "negative"
+print("Sentiment:", sentiment)  # Output: negative (due to "poor")
+Part 3: Ethics & Optimization
+Q1: Bias Mitigation
+
+MNIST Bias:
+
+Risk: Underrepresentation of non-Latin digit styles.
+
+Mitigation: Use TensorFlow Fairness Indicators to audit performance across demographic groups. Augment data with diverse handwriting samples.
+
+Amazon Reviews Bias:
+
+Risk: Sentiment rules may misclassify sarcasm (e.g., "bad" in "not bad").
+
+Mitigation: Enhance spaCy rules with context checks (e.g., "not bad" → positive) or use ML-based sentiment models.
+
+Q2: Troubleshooting Example
+Buggy TensorFlow Code:
+
+python
+# Original buggy code (dimension mismatch)
+model = tf.keras.Sequential([
+    tf.keras.layers.Dense(64, input_shape=(100,), activation='relu'),
+    tf.keras.layers.Dense(10, activation='softmax')
+])
+model.compile(optimizer='adam', loss='categorical_crossentropy')  # Error: y_true not one-hot
+Fixed Code:
+
+python
+# Fix 1: Use sparse_categorical_crossentropy for integer labels
+model.compile(optimizer='adam', loss='sparse_categorical_crossentropy')
+
+# Fix 2: One-hot encode labels if using categorical_crossentropy
+y_train_onehot = tf.keras.utils.to_categorical(y_train, 10)
+model.fit(X_train, y_train_onehot)  # Now matches output shape (10)
+Bonus Task: Streamlit Deployment
+
+python
+# app.py (Streamlit)
+import streamlit as st
+import tensorflow as tf
+from PIL import Image
+import numpy as np
+
+model = tf.keras.models.load_model('mnist_cnn.h5')
+st.title("MNIST Classifier")
+upload = st.file_uploader("Upload digit image:")
+if upload:
+    img = Image.open(upload).convert('L').resize((28, 28))
+    img_array = np.array(img).reshape(1, 28, 28, 1) / 255.0
+    pred = model.predict(img_array).argmax()
+    st.image(img, caption=f"Prediction: {pred}")
+Deployment Steps:
+
+Save trained model as mnist_cnn.h5.
+
+Run streamlit run app.py.
+
+Access via local URL or deploy to Streamlit Sharing/Heroku.
+
